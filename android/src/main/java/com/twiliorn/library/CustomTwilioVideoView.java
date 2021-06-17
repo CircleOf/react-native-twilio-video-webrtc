@@ -496,6 +496,29 @@ public class CustomTwilioVideoView extends View implements LifecycleEventListene
         room = Video.connect(getContext(), connectOptionsBuilder.build(), roomListener());
     }
 
+    private void routeAudioToDevice() {
+        if (audioManager.isWiredHeadsetOn()) {
+            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.stopBluetoothSco();
+            audioManager.setBluetoothScoOn(false);
+            audioManager.setSpeakerphoneOn(false);
+
+            return;
+        }
+
+        if (audioManager.isBluetoothScoOn()) {
+            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.startBluetoothSco();
+            audioManager.setBluetoothScoOn(true);
+            return;
+        }
+
+        audioManager.setMode(AudioManager.MODE_NORMAL);
+        audioManager.stopBluetoothSco();
+        audioManager.setBluetoothScoOn(false);
+        audioManager.setSpeakerphoneOn(true);
+    }
+
     private void setAudioFocus(boolean focus) {
         if (focus) {
             previousAudioMode = audioManager.getMode();
@@ -517,14 +540,7 @@ public class CustomTwilioVideoView extends View implements LifecycleEventListene
                         .build();
                 audioManager.requestAudioFocus(audioFocusRequest);
             }
-            /*
-             * Use MODE_IN_COMMUNICATION as the default audio mode. It is required
-             * to be in this mode when playout and/or recording starts for the best
-             * possible VoIP performance. Some devices have difficulties with
-             * speaker mode if this is not set.
-             */
-            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-            audioManager.setSpeakerphoneOn(!audioManager.isWiredHeadsetOn());
+            routeAudioToDevice();
             getContext().registerReceiver(myNoisyAudioStreamReceiver, intentFilter);
 
         } else {
@@ -551,9 +567,8 @@ public class CustomTwilioVideoView extends View implements LifecycleEventListene
     private class BecomingNoisyReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-//            audioManager.setSpeakerphoneOn(true);
             if (Intent.ACTION_HEADSET_PLUG.equals(intent.getAction())) {
-                audioManager.setSpeakerphoneOn(!audioManager.isWiredHeadsetOn());
+                routeAudioToDevice();
             }
         }
     }
